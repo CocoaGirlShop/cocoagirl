@@ -4,12 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COCOAGIRL SHOP | Tienda Oficial</title>
+    
+    <!-- FAVICON PARA PESTAÑAS -->
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- LIBRERÍAS DE FIREBASE (Modo Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <style>
         :root { --pri: #c48b76; --osc: #4a3728; --bg: #fffaf5; --danger: #e57373; --success: #7db88e; --promo: #ff6b6b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: var(--osc); padding-bottom: 100px; overflow-x: hidden; }
         
         nav { background: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
-        .logo { font-size: 18px; font-weight: bold; letter-spacing: 3px; color: var(--osc); text-decoration: none; }
+        .logo { font-size: 18px; font-weight: bold; letter-spacing: 3px; color: var(--osc); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+        .logo img { height: 30px; }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; backdrop-filter: blur(8px); align-items: center; justify-content: center; }
         .card-modal { background: white; padding: 30px; border-radius: 25px; width: 90%; max-width: 350px; text-align: center; }
@@ -45,7 +54,9 @@
 <body>
 
 <nav>
-    <a href="#" class="logo">COCOAGIRL SHOP</a>
+    <a href="#" class="logo">
+        <img src="favicon.png" onerror="this.style.display='none'"> COCOAGIRL SHOP
+    </a>
     <div style="display: flex; align-items: center; gap: 15px;">
         <div onclick="toggleCart()" style="cursor:pointer; font-size: 22px; position: relative;">
             🛒 <b id="c-count" style="font-size: 10px; background: var(--pri); color: white; padding: 2px 6px; border-radius: 10px; position: absolute; top: -5px; right: -10px;">0</b>
@@ -66,7 +77,7 @@
 </div>
 
 <div class="admin-box" id="admin-panel">
-    <h3>NUEVA PUBLICACIÓN</h3>
+    <h3>NUEVA PUBLICACIÓN (NUBE)</h3>
     <input type="text" id="p-nom" placeholder="Nombre del producto">
     <div style="display: flex; gap: 10px;">
         <input type="number" id="p-pre" placeholder="Precio Hoy ($)">
@@ -75,7 +86,7 @@
     <input type="number" id="p-stock" placeholder="Stock disponible">
     <input type="text" id="p-cat" placeholder="Categoría">
     <input type="file" id="p-img" accept="image/*">
-    <button id="btn-subir" class="btn" style="background:var(--pri)" onclick="subir()">PUBLICAR PRODUCTO</button>
+    <button id="btn-subir" class="btn" style="background:var(--pri)" onclick="subir()">PUBLICAR EN TODOS LOS CELULARES</button>
     <button onclick="cerrarSesion()" style="color:red; background:none; border:none; margin-top: 15px; cursor:pointer; width:100%; font-size: 12px;">Cerrar Sesión de Admin</button>
 </div>
 
@@ -97,10 +108,33 @@
 </div>
 
 <script>
+// --- CONFIGURACIÓN DE TU FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyB-MEamfidxxoBO3N7V2UINUJmAppTMFZg",
+  authDomain: "cocoagirl-d4077.firebaseapp.com",
+  databaseURL: "https://cocoagirl-d4077-default-rtdb.firebaseio.com",
+  projectId: "cocoagirl-d4077",
+  storageBucket: "cocoagirl-d4077.firebasestorage.app",
+  messagingSenderId: "526651706494",
+  appId: "1:526651706494:web:a2662abdfbf9aaab4a9c2f",
+  measurementId: "G-ELV2DH7V09"
+};
+
+// Inicializar
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 const adminConfig = { user: "Cocontreras", pass: "1005541138Val", recovery: "freddy.duque.63454@gmail.com" };
-let db = JSON.parse(localStorage.getItem('coco_v_final_db')) || [];
+let db = []; 
 let cart = [];
 let isAdmin = false;
+
+// ESCUCHAR DATOS DESDE LA NUBE (TIEMPO REAL)
+database.ref('productos').on('value', (snapshot) => {
+    const data = snapshot.val();
+    db = data ? Object.values(data) : [];
+    render();
+});
 
 function abrirLogin() { document.getElementById('login-modal').style.display = "flex"; }
 function cerrarLogin() { document.getElementById('login-modal').style.display = "none"; }
@@ -124,14 +158,9 @@ function cerrarSesion() {
 }
 
 function subir() {
-    const nomEl = document.getElementById('p-nom');
-    const preEl = document.getElementById('p-pre');
-    const oldEl = document.getElementById('p-old');
-    const stockEl = document.getElementById('p-stock');
-    const catEl = document.getElementById('p-cat');
-    const imgEl = document.getElementById('p-img');
+    const nomEl = document.getElementById('p-nom'), preEl = document.getElementById('p-pre'), oldEl = document.getElementById('p-old'), stockEl = document.getElementById('p-stock'), catEl = document.getElementById('p-cat'), imgEl = document.getElementById('p-img');
 
-    if(!nomEl.value || !preEl.value || !stockEl.value || !imgEl.files[0]) return alert("Por favor, completa los campos obligatorios y selecciona una imagen.");
+    if(!nomEl.value || !preEl.value || !stockEl.value || !imgEl.files[0]) return alert("Faltan campos por completar.");
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -143,30 +172,29 @@ function subir() {
             canvas.width = img.width * scale; canvas.height = img.height * scale;
             canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            db.push({ 
-                id: Date.now(), 
+            const nuevoId = Date.now();
+            const producto = { 
+                id: nuevoId, 
                 nom: nomEl.value, 
                 pre: parseInt(preEl.value), 
                 old: oldEl.value ? parseInt(oldEl.value) : null, 
                 stock: parseInt(stockEl.value), 
                 cat: catEl.value || "General", 
                 img: canvas.toDataURL('image/jpeg', 0.6) 
-            });
+            };
             
-            localStorage.setItem('coco_v_final_db', JSON.stringify(db));
+            // GUARDAR EN LA NUBE
+            database.ref('productos/' + nuevoId).set(producto);
             
-            // LIMPIEZA SIN RECARGAR
             nomEl.value = ""; preEl.value = ""; oldEl.value = ""; stockEl.value = ""; catEl.value = ""; imgEl.value = "";
-            alert("Producto publicado con éxito en CocoaGirl Shop ✨");
-            render(); 
+            alert("¡Publicado en la nube! Se verá en todos los dispositivos.");
         };
     };
     reader.readAsDataURL(imgEl.files[0]);
 }
 
 function render(f = 'todos') {
-    const grid = document.getElementById('main-grid');
-    const fBox = document.getElementById('btn-filtros');
+    const grid = document.getElementById('main-grid'), fBox = document.getElementById('btn-filtros');
     grid.innerHTML = "";
     
     const baseCats = ['todos', ...new Set(db.map(x => x.cat))];
@@ -205,18 +233,14 @@ function render(f = 'todos') {
 }
 
 function changeQty(id, d) {
-    const el = document.getElementById(`qty-${id}`);
-    const p = db.find(x => x.id === id);
+    const el = document.getElementById(`qty-${id}`), p = db.find(x => x.id === id);
     let v = parseInt(el.innerText) + d;
     if(v >= 1 && v <= p.stock) el.innerText = v;
 }
 
 function add(id) {
-    const p = db.find(x => x.id === id);
-    const q = parseInt(document.getElementById(`qty-${id}`).innerText);
-    const ya = cart.find(i => i.id === id);
+    const p = db.find(x => x.id === id), q = parseInt(document.getElementById(`qty-${id}`).innerText), ya = cart.find(i => i.id === id);
     if(ya) ya.cant += q; else cart.push({...p, cant: q});
-    p.stock -= q;
     actualizarUI();
     alert("Agregado al carrito ✨");
 }
@@ -237,7 +261,7 @@ function actualizarUI() {
 function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('open'); }
 
 function pedir() {
-    if(cart.length === 0) return alert("Tu carrito está vacío.");
+    if(cart.length === 0) return alert("Carrito vacío");
     let m = "¡Hola! Mi pedido CocoaGirl ✨:\n\n";
     cart.forEach(i => m += `• ${i.cant}x ${i.nom}\n`);
     m += `\n*TOTAL: ${document.getElementById('total').innerText}*`;
@@ -245,14 +269,10 @@ function pedir() {
 }
 
 function del(id) { 
-    if(confirm("¿Estás seguro de que quieres eliminar este producto de la tienda?")) { 
-        db = db.filter(x => x.id !== id); 
-        localStorage.setItem('coco_v_final_db', JSON.stringify(db)); 
-        render(); 
+    if(confirm("¿Eliminar definitivamente de la nube?")) { 
+        database.ref('productos/' + id).remove(); 
     } 
 }
-
-render();
 </script>
 </body>
 </html>
