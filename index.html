@@ -54,7 +54,6 @@
     </div>
 </nav>
 
-<!-- Login y Recuperación -->
 <div class="modal" id="login-modal">
     <div class="card-modal">
         <h3>ADMINISTRACIÓN</h3>
@@ -66,7 +65,6 @@
     </div>
 </div>
 
-<!-- Panel de Control -->
 <div class="admin-box" id="admin-panel">
     <h3>NUEVA PUBLICACIÓN</h3>
     <input type="text" id="p-nom" placeholder="Nombre del producto">
@@ -77,14 +75,13 @@
     <input type="number" id="p-stock" placeholder="Stock disponible">
     <input type="text" id="p-cat" placeholder="Categoría">
     <input type="file" id="p-img" accept="image/*">
-    <button id="btn-subir" class="btn" style="background:var(--pri)" onclick="subir()">PUBLICAR</button>
-    <button onclick="cerrarSesion()" style="color:red; background:none; border:none; margin-top: 10px; cursor:pointer; width:100%;">Cerrar Sesión</button>
+    <button id="btn-subir" class="btn" style="background:var(--pri)" onclick="subir()">PUBLICAR PRODUCTO</button>
+    <button onclick="cerrarSesion()" style="color:red; background:none; border:none; margin-top: 15px; cursor:pointer; width:100%; font-size: 12px;">Cerrar Sesión de Admin</button>
 </div>
 
 <div class="filtros" id="btn-filtros"></div>
 <div class="grid" id="main-grid"></div>
 
-<!-- Carrito -->
 <div id="cart-sidebar">
     <h3>MI PEDIDO</h3>
     <div id="cart-items"></div>
@@ -111,21 +108,30 @@ function recuperarClave() { window.location.href = `mailto:${adminConfig.recover
 
 function validarAcceso() {
     if(document.getElementById('user-input').value === adminConfig.user && document.getElementById('pass-input').value === adminConfig.pass) {
-        isAdmin = true; cerrarLogin(); document.getElementById('admin-panel').style.display = "block"; render();
-    } else alert("Error");
+        isAdmin = true; 
+        cerrarLogin(); 
+        document.getElementById('admin-panel').style.display = "block"; 
+        render();
+    } else {
+        alert("Usuario o contraseña incorrectos");
+    }
 }
 
-function cerrarSesion() { isAdmin = false; document.getElementById('admin-panel').style.display = "none"; render(); }
+function cerrarSesion() { 
+    isAdmin = false; 
+    document.getElementById('admin-panel').style.display = "none"; 
+    render(); 
+}
 
 function subir() {
-    const nom = document.getElementById('p-nom').value;
-    const pre = document.getElementById('p-pre').value;
-    const old = document.getElementById('p-old').value;
-    const stock = document.getElementById('p-stock').value;
-    const cat = document.getElementById('p-cat').value || "General";
-    const file = document.getElementById('p-img').files[0];
+    const nomEl = document.getElementById('p-nom');
+    const preEl = document.getElementById('p-pre');
+    const oldEl = document.getElementById('p-old');
+    const stockEl = document.getElementById('p-stock');
+    const catEl = document.getElementById('p-cat');
+    const imgEl = document.getElementById('p-img');
 
-    if(!nom || !pre || !stock || !file) return alert("Faltan datos");
+    if(!nomEl.value || !preEl.value || !stockEl.value || !imgEl.files[0]) return alert("Por favor, completa los campos obligatorios y selecciona una imagen.");
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -137,12 +143,25 @@ function subir() {
             canvas.width = img.width * scale; canvas.height = img.height * scale;
             canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            db.push({ id: Date.now(), nom, pre: parseInt(pre), old: old ? parseInt(old) : null, stock: parseInt(stock), cat, img: canvas.toDataURL('image/jpeg', 0.6) });
+            db.push({ 
+                id: Date.now(), 
+                nom: nomEl.value, 
+                pre: parseInt(preEl.value), 
+                old: oldEl.value ? parseInt(oldEl.value) : null, 
+                stock: parseInt(stockEl.value), 
+                cat: catEl.value || "General", 
+                img: canvas.toDataURL('image/jpeg', 0.6) 
+            });
+            
             localStorage.setItem('coco_v_final_db', JSON.stringify(db));
-            location.reload();
+            
+            // LIMPIEZA SIN RECARGAR
+            nomEl.value = ""; preEl.value = ""; oldEl.value = ""; stockEl.value = ""; catEl.value = ""; imgEl.value = "";
+            alert("Producto publicado con éxito en CocoaGirl Shop ✨");
+            render(); 
         };
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(imgEl.files[0]);
 }
 
 function render(f = 'todos') {
@@ -150,11 +169,9 @@ function render(f = 'todos') {
     const fBox = document.getElementById('btn-filtros');
     grid.innerHTML = "";
     
-    // Crear botones de filtros
     const baseCats = ['todos', ...new Set(db.map(x => x.cat))];
     let htmlFiltros = baseCats.map(c => `<button class="f-btn ${f===c?'active':''}" onclick="render('${c}')">${c.toUpperCase()}</button>`).join('');
     
-    // Añadir botón de ofertas si hay alguna
     if(db.some(x => x.old)) {
         htmlFiltros = `<button class="f-btn f-promo ${f==='promos'?'active':''}" onclick="render('promos')">🔥 OFERTAS</button>` + htmlFiltros;
     }
@@ -201,6 +218,7 @@ function add(id) {
     if(ya) ya.cant += q; else cart.push({...p, cant: q});
     p.stock -= q;
     actualizarUI();
+    alert("Agregado al carrito ✨");
 }
 
 function actualizarUI() {
@@ -219,13 +237,20 @@ function actualizarUI() {
 function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('open'); }
 
 function pedir() {
+    if(cart.length === 0) return alert("Tu carrito está vacío.");
     let m = "¡Hola! Mi pedido CocoaGirl ✨:\n\n";
     cart.forEach(i => m += `• ${i.cant}x ${i.nom}\n`);
     m += `\n*TOTAL: ${document.getElementById('total').innerText}*`;
     window.open(`https://wa.me/573104473264?text=${encodeURIComponent(m)}`);
 }
 
-function del(id) { if(confirm("¿Borrar?")) { db = db.filter(x => x.id !== id); localStorage.setItem('coco_v_final_db', JSON.stringify(db)); render(); } }
+function del(id) { 
+    if(confirm("¿Estás seguro de que quieres eliminar este producto de la tienda?")) { 
+        db = db.filter(x => x.id !== id); 
+        localStorage.setItem('coco_v_final_db', JSON.stringify(db)); 
+        render(); 
+    } 
+}
 
 render();
 </script>
